@@ -1,7 +1,7 @@
 """
 SentinelPay Entity-Relationship Topology Graph Builder.
 
-Constructs a NetworkX + Plotly dark-slate graph linking Cards, Devices,
+Constructs a light-canvas NetworkX + Plotly graph linking Cards, Devices,
 IP Hashes, and Merchants to expose multi-card fraud rings and shared
 compromised infrastructure.
 """
@@ -17,11 +17,11 @@ import plotly.graph_objects as go
 from simulator import format_inr
 
 
-RISK_COLORS = {
-    "APPROVED": "#10B981",
-    "REVIEW": "#F59E0B",
-    "BLOCKED": "#EF4444",
-    "NEUTRAL": "#64748B",
+ENTITY_COLORS = {
+    "CARD": "#2563EB",      # Royal blue
+    "DEVICE": "#7C3AED",    # Deep violet
+    "MERCHANT": "#D97706",  # Warm amber
+    "IP": "#475569",        # Institutional slate
 }
 
 
@@ -130,7 +130,7 @@ def build_entity_graph(
     selected_txn_id: Optional[str] = None,
 ) -> Tuple[go.Figure, Dict[str, int]]:
     """
-    Build a Plotly figure visualizing Card <-> Device <-> IP <-> Merchant topology.
+    Build a light-canvas Plotly figure visualizing Card <-> Device <-> IP <-> Merchant topology.
     Returns (plotly.graph_objects.Figure, graph_metrics_dict).
     """
     subset, focus_nodes = _select_subgraph_txns(txns, focus_mode, selected_txn_id)
@@ -187,10 +187,12 @@ def build_entity_graph(
 
     if graph.number_of_nodes() == 0:
         fig.update_layout(
-            paper_bgcolor="#111827",
-            plot_bgcolor="#0B0F17",
+            paper_bgcolor="#FFFFFF",
+            plot_bgcolor="#FFFFFF",
             height=360,
             margin=dict(l=12, r=12, t=12, b=12),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, showline=True, mirror=True, linecolor="#E2E8F0", linewidth=1),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, showline=True, mirror=True, linecolor="#E2E8F0", linewidth=1),
             annotations=[
                 dict(
                     text="NO ACTIVE ENTITIES IN CURRENT FILTER",
@@ -199,7 +201,7 @@ def build_entity_graph(
                     xref="paper",
                     yref="paper",
                     showarrow=False,
-                    font=dict(family="JetBrains Mono, monospace", size=12, color="#6B7280"),
+                    font=dict(family="JetBrains Mono, monospace", size=12, color="#64748B"),
                 )
             ],
         )
@@ -207,30 +209,24 @@ def build_entity_graph(
 
     pos = nx.spring_layout(graph, k=0.65, iterations=55, seed=42)
 
-    # Split edges by risk tier for clean institutional contrast
     normal_x, normal_y = [], []
-    review_x, review_y = [], []
-    blocked_x, blocked_y = [], []
+    high_risk_x, high_risk_y = [], []
 
     for u, v in graph.edges():
         key = tuple(sorted((u, v)))
         edge_risk = edge_meta[key]["max_risk"]
         x0, y0 = pos[u]
         x1, y1 = pos[v]
-        if edge_risk >= 70:
-            blocked_x.extend([x0, x1, None])
-            blocked_y.extend([y0, y1, None])
-        elif edge_risk >= 40:
-            review_x.extend([x0, x1, None])
-            review_y.extend([y0, y1, None])
+        if edge_risk >= 70 or (graph.degree(u) >= 3 and edge_risk >= 40) or (graph.degree(v) >= 3 and edge_risk >= 40):
+            high_risk_x.extend([x0, x1, None])
+            high_risk_y.extend([y0, y1, None])
         else:
             normal_x.extend([x0, x1, None])
             normal_y.extend([y0, y1, None])
 
     for name, ex, ey, color, width in (
-        ("Baseline Link", normal_x, normal_y, "rgba(100, 116, 139, 0.35)", 1.0),
-        ("Review Link", review_x, review_y, "rgba(245, 158, 11, 0.55)", 1.5),
-        ("High-Risk Link", blocked_x, blocked_y, "rgba(239, 68, 68, 0.75)", 2.0),
+        ("Normal Link", normal_x, normal_y, "#CBD5E1", 1.5),
+        ("High-Risk / Fraud-Ring Link", high_risk_x, high_risk_y, "#DC2626", 2.5),
     ):
         if ex:
             fig.add_trace(
@@ -245,12 +241,11 @@ def build_entity_graph(
                 )
             )
 
-    # Node traces grouped by entity type for distinct geometric markers
     symbol_map = {
         "CARD": ("circle", "Card"),
         "DEVICE": ("diamond", "Device"),
-        "IP": ("square", "IP Hash"),
         "MERCHANT": ("triangle-up", "Merchant"),
+        "IP": ("square", "IP Hash"),
     }
 
     for ntype, (symbol, display_name) in symbol_map.items():
@@ -269,30 +264,27 @@ def build_entity_graph(
             [],
         )
 
+        base_color = ENTITY_COLORS[ntype]
         for nid in nodes:
             meta = node_meta[nid]
             x, y = pos[nid]
             xs.append(x)
             ys.append(y)
+            colors.append(base_color)
+
+            deg = graph.degree(nid)
+            sizes.append(min(22, 11 + deg * 2.0))
 
             risk = meta["max_risk"]
-            if risk >= 70:
-                col = RISK_COLORS["BLOCKED"]
-            elif risk >= 40:
-                col = RISK_COLORS["REVIEW"]
-            else:
-                col = RISK_COLORS["APPROVED"] if ntype == "CARD" else RISK_COLORS["NEUTRAL"]
-
-            colors.append(col)
-            deg = graph.degree(nid)
-            sizes.append(min(22, 10 + deg * 2.2))
-
             if nid in focus_nodes:
-                line_colors.append("#3B82F6")
+                line_colors.append("#0F172A")
                 line_widths.append(2.5)
+            elif risk >= 70:
+                line_colors.append("#DC2626")
+                line_widths.append(2.2)
             else:
-                line_colors.append("#0B0F17")
-                line_widths.append(1.2)
+                line_colors.append("#FFFFFF")
+                line_widths.append(1.5)
 
             short_lbl = meta["label"] if deg >= 2 or risk >= 70 or nid in focus_nodes else ""
             texts.append(short_lbl)
@@ -311,9 +303,14 @@ def build_entity_graph(
                 name=display_name,
                 text=texts,
                 textposition="top center",
-                textfont=dict(family="JetBrains Mono, monospace", size=9, color="#D1D5DB"),
+                textfont=dict(family="JetBrains Mono, monospace", size=9, color="#0F172A"),
                 hovertext=hovers,
                 hoverinfo="text",
+                hoverlabel=dict(
+                    bgcolor="#0F172A",
+                    bordercolor="#0F172A",
+                    font=dict(family="JetBrains Mono, monospace", size=11, color="#FFFFFF"),
+                ),
                 marker=dict(
                     symbol=symbol,
                     size=sizes,
@@ -324,10 +321,10 @@ def build_entity_graph(
         )
 
     fig.update_layout(
-        paper_bgcolor="#111827",
-        plot_bgcolor="#0B0F17",
+        paper_bgcolor="#FFFFFF",
+        plot_bgcolor="#FFFFFF",
         height=360,
-        margin=dict(l=8, r=8, t=8, b=8),
+        margin=dict(l=8, r=8, t=28, b=8),
         hovermode="closest",
         legend=dict(
             orientation="h",
@@ -335,11 +332,29 @@ def build_entity_graph(
             y=1.01,
             xanchor="left",
             x=0.0,
-            font=dict(family="JetBrains Mono, monospace", size=10, color="#9CA3AF"),
-            bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Inter, sans-serif", size=11, color="#475569"),
+            bgcolor="rgba(255,255,255,0)",
         ),
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, fixedrange=False),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, fixedrange=False),
+        xaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            showticklabels=False,
+            showline=True,
+            mirror=True,
+            linecolor="#E2E8F0",
+            linewidth=1,
+            fixedrange=False,
+        ),
+        yaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            showticklabels=False,
+            showline=True,
+            mirror=True,
+            linecolor="#E2E8F0",
+            linewidth=1,
+            fixedrange=False,
+        ),
     )
 
     metrics = {
