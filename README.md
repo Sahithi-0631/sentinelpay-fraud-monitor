@@ -1,7 +1,9 @@
 # SentinelPay — Real-Time Transaction Fraud Monitor
 
 An institutional-grade real-time payment fraud operations console built as a single-service Python + Streamlit application for zero-sleep deployment on Streamlit Community Cloud.
-
+*#streamlit Link:*
+  
+https://sentinelpay-fraud-monitor.streamlit.app/
 ## Architecture Overview
 
 - **Single-Service Zero-Sleep Runtime (`app.py`)**: Unifies the live Indian payment stream, weighted fraud-scoring engine, entity-link graph builder, and SOC analyst console inside one Streamlit process with `@st.fragment` partial refreshes.
