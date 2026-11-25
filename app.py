@@ -444,6 +444,12 @@ def _get_engine() -> FraudScoringEngine:
     )
 
 
+def _render_html(markup: str) -> None:
+    """Render HTML via st.markdown with zero leading spaces per line."""
+    clean = "\n".join(line.lstrip() for line in markup.splitlines() if line.strip())
+    st.markdown(clean, unsafe_allow_html=True)
+
+
 def _pill_html(decision: str) -> str:
     cls_map = {
         "APPROVED": "sp-pill-approved",
@@ -538,16 +544,6 @@ with st.sidebar:
     filter_city = st.selectbox("Indian Corridor", ["ALL CITIES"] + list(INDIAN_CITIES.keys()), index=0)
     filter_query = st.text_input("Search Txn / Card / Merchant", value="", placeholder="e.g. Tanishq, 4532, TXN-")
 
-    st.markdown('<div class="sp-side-section">State Layer</div>', unsafe_allow_html=True)
-    st.markdown(
-        f'<div class="mono" style="font-size:0.70rem;color:#9CA3AF;line-height:1.5;">'
-        f'BACKEND: <span style="color:#F3F4F6;">{html.escape(store.backend_label)}</span><br>'
-        f'DETAIL: {html.escape(store.redis_status_detail)}<br>'
-        f'WINDOW TTL: 3600s | CAP: {store.MAX_FEED_TXNS} TXNS'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
-
 
 # ---------------------------------------------------------------------------
 # Top Utility Control Row (Outside fragment for instant manual triggers)
@@ -633,7 +629,7 @@ def render_live_soc_console() -> None:
     )
     latency_display = f"{avg_latency:.2f}ms" if avg_latency > 0 else "<12ms"
 
-    st.markdown(
+    _render_html(
         f"""
         <div class="sp-topbar">
             <div>
@@ -642,16 +638,15 @@ def render_live_soc_console() -> None:
             </div>
             <div class="sp-status-group">
                 <span class="sp-sys-pill sp-sys-online">● ENGINE ONLINE | LATENCY: &lt;12ms ({latency_display})</span>
-                <span class="sp-sys-pill">STATE: {html.escape(store.backend_label)}</span>
+                <span class="sp-sys-pill">MODE: REAL-TIME STREAM</span>
                 {stream_pill}
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     # 5-Card KPI Strip
-    st.markdown(
+    _render_html(
         f"""
         <div class="sp-kpi-grid">
             <div class="sp-kpi-card">
@@ -680,8 +675,7 @@ def render_live_soc_console() -> None:
                 <div class="sp-kpi-sub">ACTIVE RINGS: {len(ring_clusters)} | {latency_display}</div>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     # Apply Ledger Filters
@@ -902,7 +896,7 @@ def render_live_soc_console() -> None:
                 {audit_lines}
             </div>
             """
-            st.markdown(inspector_html, unsafe_allow_html=True)
+            _render_html(inspector_html)
 
             act1, act2, act3 = st.columns(3)
             with act1:
