@@ -32,33 +32,3 @@ sentinelpay-fraud-monitor/
 ├── .streamlit/
 │   └── config.toml         # Institutional dark-slate theme configuration
 └── README.md               # Local setup and Streamlit Cloud deployment documentation
-```
-
-## Local Setup
-
-1. Navigate to the project directory:
-   ```bash
-   cd sentinelpay-fraud-monitor
-   ```
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Run the application (works out-of-the-box with in-memory sliding windows):
-   ```bash
-   streamlit run app.py
-   ```
-4. *(Optional)* Enable Upstash Redis persistence by setting `UPSTASH_REDIS_URL` in your environment or a local `.env` file:
-   ```env
-   UPSTASH_REDIS_URL=rediss://default:<password>@<endpoint>.upstash.io:6379
-   ```
-
-## Deploying to Streamlit Community Cloud
-
-1. Push the `sentinelpay-fraud-monitor/` directory to a GitHub repository.
-2. Go to [share.streamlit.io](https://share.streamlit.io), select your repository, and set the main file path to `app.py` (or `sentinelpay-fraud-monitor/app.py`).
-3. *(Optional)* Add `UPSTASH_REDIS_URL` under **App Settings -> Secrets**:
-   ```toml
-   UPSTASH_REDIS_URL = "rediss://default:<password>@<endpoint>.upstash.io:6379"
-   ```
-4. Deploy. The app starts immediately with zero external backend dependencies.
